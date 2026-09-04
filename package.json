@@ -1,0 +1,54 @@
+{
+  "name": "bl-awards",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A private, local-first cinematic BL awards desktop application.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5000",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5000",
+    "electron": "electron electron/main.cjs",
+    "electron:dev": "concurrently -k \"vite --host 0.0.0.0 --port 5000\" \"wait-on http://127.0.0.1:5000 && electron electron/main.cjs\"",
+    "dist": "pnpm build && electron-builder"
+  },
+  "dependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.5.5",
+    "dexie": "^4.4.5",
+    "framer-motion": "^12.43.0",
+    "lucide-react": "^0.511.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.3",
+    "sonner": "^2.0.8"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.4",
+    "electron": "^37.10.3",
+    "electron-builder": "^26.15.3",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^3.4.19",
+    "typescript": "~5.8.3",
+    "vite": "^6.4.3",
+    "wait-on": "^8.0.5"
+  },
+  "build": {
+    "appId": "com.blawards.desktop",
+    "productName": "BL Awards",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
+  }
+}
