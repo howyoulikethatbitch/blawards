@@ -1,0 +1,1 @@
+- [Electron file packaging](electron-file-packaging.md) — packaged `file://` windows need relative assets and hash routing.

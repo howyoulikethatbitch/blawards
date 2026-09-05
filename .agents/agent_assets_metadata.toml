@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "SymgY4XLAc9EuVn9uJANA"
+uri = "file://release/BL%20Awards%20Setup%200.1.0.exe"
+type = "unspecified"
+title = "BL Awards Windows installer (fixed)"
+description = "Rebuilt Windows x64 installer with corrected packaged asset paths and file-based routing."
+logical_id = "9a11328d-fc50-4e5b-869c-0c733fe62412"
+content_hash = "sha256:6e3595d6b90037a3ea7eb665e7206c8911f72ab8ab98f2b487c284626727b5d3"
+size = 189775
+mtime_ms = 1788579927925
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:e3b58834-0f8f-4123-bde2-8b97f5918eaa/9a11328d-fc50-4e5b-869c-0c733fe62412/f8d4ed8e-7bc9-4d30-a992-a9b8c92476ab"
+storage_version_token = "1788580040725539"
+content_type = "application/octet-stream"
