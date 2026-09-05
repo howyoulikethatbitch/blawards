@@ -39,6 +39,7 @@ import {
   makeId,
   saveTitle,
 } from "./db";
+import type { UpdateStatus } from "./electron";
 
 type PageMeta = { title: string; eyebrow: string; description: string };
 const pageMeta: Record<string, PageMeta> = {
@@ -149,6 +150,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      <UpdateCenter />
       <AnimatePresence>
         {sidebarOpen && <motion.button className="mobile-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSidebarOpen(false)} aria-label="Close navigation" />}
       </AnimatePresence>
@@ -209,6 +211,51 @@ function App() {
         {titleEditor.open && <TitleModal title={titleEditor.title} onClose={() => setTitleEditor({ open: false })} onSaved={handleSaved} />}
       </AnimatePresence>
     </div>
+  );
+}
+
+function UpdateCenter() {
+  const [status, setStatus] = useState<UpdateStatus>({ state: "current" });
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    const updater = window.blAwards?.updater;
+    if (!updater || window.blAwards?.platform !== "win32") return;
+    const unsubscribe = updater.onStatus((nextStatus) => {
+      setStatus(nextStatus);
+      if (nextStatus.state === "available" || nextStatus.state === "downloaded") setDismissed(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  if (dismissed || status.state === "current" || status.state === "checking" || status.state === "error") return null;
+  const updater = window.blAwards?.updater;
+  if (!updater) return null;
+  const availableVersion = status.state === "available" ? status.version : "";
+
+  const download = () => {
+    setStatus({ state: "downloading", percent: 0 });
+    updater.download().catch(() => undefined);
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div className="update-center" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+        <div className="update-copy">
+          <Sparkles size={16} />
+          <div>
+            <strong>{status.state === "downloaded" ? "Update ready to install" : status.state === "downloading" ? "Downloading update" : `BL Awards ${availableVersion} is available`}</strong>
+            <span>{status.state === "downloading" ? `${status.percent}% downloaded` : status.state === "downloaded" ? "Restart when you are ready. Your archive will stay local." : "A new desktop release is ready for your archive."}</span>
+          </div>
+        </div>
+        <div className="update-actions">
+          {status.state === "available" && <button className="primary-button" onClick={download}>Update now</button>}
+          {status.state === "downloading" && <div className="update-progress"><span style={{ width: `${status.percent}%` }} /></div>}
+          {status.state === "downloaded" && <button className="primary-button" onClick={() => updater.install()}>Restart & install</button>}
+          <button className="update-later" onClick={() => setDismissed(true)}>Later</button>
+        </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
