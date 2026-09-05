@@ -15,6 +15,7 @@ import {
   GalleryHorizontalEnd,
   Gem,
   Heart,
+  ImagePlus,
   LayoutDashboard,
   Menu,
   Plus,
@@ -22,12 +23,14 @@ import {
   Settings,
   Sparkles,
   Star,
+  Trash2,
   Trophy,
+  Upload,
   UsersRound,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -90,6 +93,26 @@ const placeholderPoster = [
 
 function getPosterClass(title: string) {
   return placeholderPoster[title.length % placeholderPoster.length];
+}
+
+function imageFileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("Please choose an image file."));
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      reject(new Error("Images must be 8 MB or smaller."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") resolve(reader.result);
+      else reject(new Error("That image could not be read."));
+    };
+    reader.onerror = () => reject(new Error("That image could not be read."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function App() {
@@ -330,7 +353,7 @@ function TitlesPage({ titles, evaluations, onAdd, onEdit, onDelete }: { titles: 
 }
 
 function Poster({ title, size = "medium" }: { title: TitleRecord; size?: "small" | "medium" | "large" }) {
-  return <div className={`poster ${size} ${getPosterClass(title.title)}`}><span>{title.title.split(" ").map((word) => word[0]).slice(0, 2).join("")}</span><small>{title.year}</small></div>;
+  return <div className={`poster ${size} ${getPosterClass(title.title)} ${title.poster ? "has-image" : ""}`} style={title.poster ? { backgroundImage: `url(${title.poster})` } : undefined}><span>{title.title.split(" ").map((word) => word[0]).slice(0, 2).join("")}</span><small>{title.year}</small></div>;
 }
 
 function TitleCard({ title, evaluation, onEdit, onDelete }: { title: TitleRecord; evaluation?: EvaluationRecord; onEdit: () => void; onDelete: () => void }) {
@@ -357,7 +380,7 @@ function CouplesPage({ titles }: { titles: TitleRecord[] }) {
 }
 
 function ScenesPage({ titles }: { titles: TitleRecord[] }) {
-  return <div className="page"><PageHeading eyebrow="Database / Scenes" title="Scenes" description="A visual index of the moments you never want to forget." /><div className="scene-grid">{titles.filter((title) => title.sceneTitle).map((title) => <div className="scene-card" key={title.id}><div className={`scene-image ${getPosterClass(title.title)}`}><Clapperboard size={26} /><span>16:9</span></div><div><p>{title.title} · {title.year}</p><h3>{title.sceneTitle}</h3></div></div>)}</div></div>;
+  return <div className="page"><PageHeading eyebrow="Database / Scenes" title="Scenes" description="A visual index of the moments you never want to forget." /><div className="scene-grid">{titles.filter((title) => title.sceneTitle).map((title) => <div className="scene-card" key={title.id}><div className={`scene-image ${getPosterClass(title.title)} ${title.sceneImage ? "has-image" : ""}`} style={title.sceneImage ? { backgroundImage: `url(${title.sceneImage})` } : undefined}>{!title.sceneImage && <Clapperboard size={26} />}<span>16:9</span></div><div><p>{title.title} · {title.year}</p><h3>{title.sceneTitle}</h3></div></div>)}</div></div>;
 }
 
 function EvaluationsPage({ titles, evaluations, onRefresh }: { titles: TitleRecord[]; evaluations: EvaluationRecord[]; onRefresh: () => Promise<void> }) {
@@ -409,14 +432,105 @@ function AwardsNight({ titles, evaluations }: { titles: TitleRecord[]; evaluatio
 }
 
 function TitleModal({ title, onClose, onSaved }: { title?: TitleRecord; onClose: () => void; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState({ title: title?.title ?? "", type: title?.type ?? "Series" as TitleType, year: String(title?.year ?? 2026), country: title?.country ?? "Thailand", genres: title?.genres.join(", ") ?? "Romance", actorOne: title?.actorOne ?? "", characterOne: title?.characterOne ?? "", actorTwo: title?.actorTwo ?? "", characterTwo: title?.characterTwo ?? "", coupleName: title?.coupleName ?? "", sceneTitle: title?.sceneTitle ?? "" });
+  const [form, setForm] = useState({
+    title: title?.title ?? "",
+    type: title?.type ?? "Series" as TitleType,
+    year: String(title?.year ?? 2026),
+    country: title?.country ?? "Thailand",
+    genres: title?.genres.join(", ") ?? "Romance",
+    actorOne: title?.actorOne ?? "",
+    characterOne: title?.characterOne ?? "",
+    actorTwo: title?.actorTwo ?? "",
+    characterTwo: title?.characterTwo ?? "",
+    coupleName: title?.coupleName ?? "",
+    sceneTitle: title?.sceneTitle ?? "",
+    poster: title?.poster ?? "",
+    sceneImage: title?.sceneImage ?? "",
+  });
   const update = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
   const save = async () => {
     if (!form.title.trim() || !form.actorOne.trim() || !form.actorTwo.trim()) { toast.error("Add a title and both lead actors"); return; }
-    await saveTitle({ ...form, title: form.title.trim(), year: Number(form.year), type: form.type as TitleType, genres: form.genres.split(",").map((genre) => genre.trim()).filter(Boolean) }, title?.id);
+    await saveTitle({
+      ...form,
+      title: form.title.trim(),
+      year: Number(form.year),
+      type: form.type as TitleType,
+      genres: form.genres.split(",").map((genre) => genre.trim()).filter(Boolean),
+      poster: form.poster || undefined,
+      sceneImage: form.sceneImage || undefined,
+    }, title?.id);
     await onSaved();
   };
-  return <div className="modal-backdrop"><motion.div className="modal title-modal" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}><ModalHeader eyebrow={title ? "Edit title" : "Add to archive"} title={title ? title.title : "New title"} onClose={onClose} /><div className="form-grid"><label className="full-field"><span>Title <b>*</b></span><input value={form.title} onChange={(event) => update("title", event.target.value)} placeholder="e.g. The story we keep" autoFocus /></label><label><span>Type <b>*</b></span><select value={form.type} onChange={(event) => update("type", event.target.value)}><option>Series</option><option>Movie</option></select></label><label><span>Release year <b>*</b></span><input type="number" min="1900" max="2200" value={form.year} onChange={(event) => update("year", event.target.value)} /></label><label><span>Country</span><select value={form.country} onChange={(event) => update("country", event.target.value)}><option>Thailand</option><option>Korea</option><option>Japan</option><option>Taiwan</option><option>China</option><option>International</option></select></label><label><span>Genres <small>comma separated</small></span><input value={form.genres} onChange={(event) => update("genres", event.target.value)} placeholder="Romance, Drama" /></label><div className="form-divider full-field"><span>Lead relationship</span></div><label><span>Actor 1 <b>*</b></span><input value={form.actorOne} onChange={(event) => update("actorOne", event.target.value)} placeholder="First name" /></label><label><span>Character 1</span><input value={form.characterOne} onChange={(event) => update("characterOne", event.target.value)} placeholder="Character name" /></label><label><span>Actor 2 <b>*</b></span><input value={form.actorTwo} onChange={(event) => update("actorTwo", event.target.value)} placeholder="First name" /></label><label><span>Character 2</span><input value={form.characterTwo} onChange={(event) => update("characterTwo", event.target.value)} placeholder="Character name" /></label><label className="full-field"><span>Couple name <small>auto-generated if blank</small></span><input value={form.coupleName} onChange={(event) => update("coupleName", event.target.value)} placeholder={`${form.actorOne || "Actor 1"} × ${form.actorTwo || "Actor 2"}`} /></label><label className="full-field"><span>Signature scene</span><input value={form.sceneTitle} onChange={(event) => update("sceneTitle", event.target.value)} placeholder="A moment you never want to forget" /></label></div><div className="modal-actions"><button className="subtle-button" onClick={onClose}>Cancel</button><button className="primary-button" onClick={save}><Check size={16} /> Save title</button></div></motion.div></div>;
+  return <div className="modal-backdrop"><motion.div className="modal title-modal" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+    <ModalHeader eyebrow={title ? "Edit title" : "Add to archive"} title={title ? title.title : "New title"} onClose={onClose} />
+    <div className="form-grid">
+      <label className="full-field"><span>Title <b>*</b></span><input value={form.title} onChange={(event) => update("title", event.target.value)} placeholder="e.g. The story we keep" autoFocus /></label>
+      <label><span>Type <b>*</b></span><select value={form.type} onChange={(event) => update("type", event.target.value)}><option>Series</option><option>Movie</option></select></label>
+      <label><span>Release year <b>*</b></span><input type="number" min="1900" max="2200" value={form.year} onChange={(event) => update("year", event.target.value)} /></label>
+      <label><span>Country</span><select value={form.country} onChange={(event) => update("country", event.target.value)}><option>Thailand</option><option>Korea</option><option>Japan</option><option>Taiwan</option><option>China</option><option>International</option></select></label>
+      <label><span>Genres <small>comma separated</small></span><input value={form.genres} onChange={(event) => update("genres", event.target.value)} placeholder="Romance, Drama" /></label>
+      <div className="form-divider full-field"><span>Lead relationship</span></div>
+      <label><span>Actor 1 <b>*</b></span><input value={form.actorOne} onChange={(event) => update("actorOne", event.target.value)} placeholder="First name" /></label>
+      <label><span>Character 1</span><input value={form.characterOne} onChange={(event) => update("characterOne", event.target.value)} placeholder="Character name" /></label>
+      <label><span>Actor 2 <b>*</b></span><input value={form.actorTwo} onChange={(event) => update("actorTwo", event.target.value)} placeholder="First name" /></label>
+      <label><span>Character 2</span><input value={form.characterTwo} onChange={(event) => update("characterTwo", event.target.value)} placeholder="Character name" /></label>
+      <label className="full-field"><span>Couple name <small>auto-generated if blank</small></span><input value={form.coupleName} onChange={(event) => update("coupleName", event.target.value)} placeholder={`${form.actorOne || "Actor 1"} × ${form.actorTwo || "Actor 2"}`} /></label>
+      <label className="full-field"><span>Signature scene</span><input value={form.sceneTitle} onChange={(event) => update("sceneTitle", event.target.value)} placeholder="A moment you never want to forget" /></label>
+      <div className="form-divider full-field"><span>Visual archive</span></div>
+      <ImageDropzone label="Poster artwork" hint="Shown across your title archive" value={form.poster} onChange={(value) => update("poster", value)} />
+      <ImageDropzone label="Signature scene photo" hint="Shown in your Scenes gallery" value={form.sceneImage} onChange={(value) => update("sceneImage", value)} />
+    </div>
+    <div className="modal-actions"><button className="subtle-button" onClick={onClose}>Cancel</button><button className="primary-button" onClick={save}><Check size={16} /> Save title</button></div>
+  </motion.div></div>;
+}
+
+function ImageDropzone({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (value: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const chooseFile = async (file?: File) => {
+    if (!file) return;
+    try {
+      onChange(await imageFileToDataUrl(file));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "That image could not be added.");
+    }
+  };
+
+  const openPicker = () => inputRef.current?.click();
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openPicker();
+    }
+  };
+
+  return <div className="image-field">
+    <div className="image-field-heading"><span>{label}</span><small>{hint}</small></div>
+    <div
+      className={`image-dropzone ${dragging ? "is-dragging" : ""} ${value ? "has-image" : ""}`}
+      role="button"
+      tabIndex={0}
+      onClick={openPicker}
+      onKeyDown={handleKeyDown}
+      onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(event) => { event.preventDefault(); setDragging(false); void chooseFile(event.dataTransfer.files[0]); }}
+      aria-label={`${label}: choose or drop an image`}
+    >
+      <input ref={inputRef} type="file" accept="image/*" hidden onChange={(event) => { void chooseFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+      {value ? <>
+        <img src={value} alt={`${label} preview`} />
+        <div className="image-dropzone-overlay"><span>Click or drop to replace</span></div>
+        <button type="button" className="image-remove" onClick={(event) => { event.stopPropagation(); onChange(""); }}><Trash2 size={13} /> Remove</button>
+      </> : <>
+        <ImagePlus size={21} />
+        <strong>Drop an image here</strong>
+        <span>or choose one from your device</span>
+        <button type="button" className="dropzone-button" onClick={(event) => { event.stopPropagation(); openPicker(); }}><Upload size={13} /> Choose image</button>
+      </>}
+    </div>
+  </div>;
 }
 
 function ModalHeader({ eyebrow, title, onClose }: { eyebrow: string; title: string; onClose: () => void }) {
