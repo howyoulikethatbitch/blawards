@@ -1,1 +1,48 @@
+name: Release Windows installer
 
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish Windows release
+    runs-on: windows-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build renderer
+        run: pnpm build
+
+      - name: Package and publish Windows installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pnpm exec electron-builder --win nsis --publish onTag
+
+      - name: Verify release files
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Path release -Filter *.exe
+          if (-not $installer) { throw "No Windows installer was produced in release/" }
+          if (-not (Test-Path "release/latest.yml")) { throw "electron-updater metadata release/latest.yml was not produced" }
+          Get-ChildItem -Path release | Select-Object Name, Length
