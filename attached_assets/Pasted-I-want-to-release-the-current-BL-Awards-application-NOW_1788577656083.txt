@@ -1,0 +1,185 @@
+I want to release the current BL Awards application NOW.
+
+Do NOT perform another verification/audit first.
+
+Do NOT ask me to review the workflow before releasing.
+
+I want to see the actual Windows `.exe` release myself and test it. If I encounter bugs, I will report them afterward.
+
+## RELEASE NOW
+
+Use the CURRENT working state of the project.
+
+The current GitHub repository is:
+
+`howyoulikethatbitch/blawards`
+
+Create the first release using the current application version.
+
+If the current package.json version is `0.1.0`, use:
+
+`v0.1.0`
+
+If the current package.json already contains another version, use the matching version tag:
+
+`v<package-version>`
+
+Do NOT arbitrarily change the application version unless absolutely necessary for the release to work.
+
+---
+
+## IMPORTANT
+
+I do NOT want another audit.
+
+I do NOT want a list of possible problems before releasing.
+
+I understand that the Windows-specific installer/update behavior has not been fully tested yet.
+
+I specifically want GitHub Actions to perform the real Windows build so I can test the actual release myself.
+
+Proceed with the release.
+
+---
+
+## RELEASE STEPS
+
+1. Make sure the current changes are saved.
+
+2. Check the current package version.
+
+3. Commit the current release changes if they are not already committed.
+
+Use an appropriate commit message such as:
+
+`Release v0.1.0`
+
+or the actual version.
+
+4. Push the current branch to GitHub.
+
+5. Create the matching version tag.
+
+Example:
+
+`v0.1.0`
+
+6. Push the tag to GitHub.
+
+The tag must trigger:
+
+`.github/workflows/release.yml`
+
+7. GitHub Actions should run the Windows build on:
+
+`windows-latest`
+
+8. The workflow should:
+
+* install pnpm
+* install dependencies
+* run the application build
+* package Electron
+* create the Windows NSIS installer
+* publish the GitHub Release
+* upload the `.exe`
+* upload `latest.yml`
+* upload `.blockmap` and any other required updater files
+
+---
+
+## DO NOT CHANGE THE APPLICATION
+
+Do not modify unrelated BL Awards functionality.
+
+Do not redesign the app.
+
+Do not change:
+
+* award categories
+* evaluation system
+* Awards Night
+* Hall of Fame
+* Title source-of-truth architecture
+* IndexedDB/Dexie database
+* existing UI
+
+Only perform whatever Git/GitHub release actions are necessary.
+
+---
+
+## IF THE TAG ALREADY EXISTS
+
+If the intended release tag already exists, do NOT create a duplicate tag.
+
+Instead, inspect the current GitHub state and determine the safest way to trigger the existing release workflow.
+
+Do not delete an existing release or tag unless absolutely necessary.
+
+---
+
+## IF GITHUB AUTHENTICATION IS REQUIRED
+
+Use the authentication already available in this Replit environment.
+
+Do NOT ask me to paste a GitHub password or personal access token into the chat.
+
+Do NOT expose credentials.
+
+If Replit cannot push the tag because GitHub authentication is unavailable, stop and tell me exactly what GitHub authorization step I need to complete.
+
+---
+
+## AFTER STARTING THE RELEASE
+
+Tell me:
+
+### Release version
+
+The exact version being released.
+
+### Git tag
+
+The exact tag created.
+
+### GitHub Actions
+
+Whether the workflow has started.
+
+### GitHub Release
+
+Whether the release has been created/published.
+
+### Windows installer
+
+Tell me where I can get the generated Windows `.exe`.
+
+If the workflow is still running, clearly tell me that I need to wait for the GitHub Actions build to finish.
+
+Do NOT claim the `.exe` exists until GitHub Actions actually produces it.
+
+---
+
+## MY GOAL
+
+I want to reach this point:
+
+GitHub Release
+↓
+Windows `.exe`
+↓
+I download it
+↓
+Install BL Awards on Windows
+↓
+Open BL Awards
+↓
+Personally test the application
+↓
+If I find bugs, I report them to you/Replit
+↓
+We fix them
+↓
+Release the next version
+
+Proceed with the release now.
