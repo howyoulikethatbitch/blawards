@@ -3,9 +3,13 @@ const path = require("node:path");
 const { autoUpdater } = require("electron-updater");
 
 const isDev = !app.isPackaged;
+const updateCheckIntervalMs = 5 * 60 * 1000;
 let mainWindow;
+let latestUpdaterStatus = { state: "current" };
+let updateCheckTimer;
 
 function sendUpdaterStatus(status) {
+  latestUpdaterStatus = status;
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("updater-status", status);
   }
@@ -37,6 +41,12 @@ function createWindow() {
 function configureUpdater() {
   if (isDev || process.platform !== "win32") return;
 
+  autoUpdater.setFeedURL({
+    provider: "github",
+    owner: "howyoulikethatbitch",
+    repo: "blawards",
+    releaseType: "release",
+  });
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.on("checking-for-update", () => sendUpdaterStatus({ state: "checking" }));
@@ -65,6 +75,7 @@ function configureUpdater() {
       return { ok: false };
     }
   });
+  ipcMain.handle("updater-status", () => latestUpdaterStatus);
   ipcMain.handle("updater-download", async () => {
     try {
       await autoUpdater.downloadUpdate();
@@ -95,7 +106,9 @@ app.whenReady().then(() => {
   createWindow();
   configureUpdater();
   if (!isDev && process.platform === "win32") {
-    setTimeout(() => autoUpdater.checkForUpdates().catch(() => undefined), 2500);
+    const checkForUpdates = () => autoUpdater.checkForUpdates().catch(() => undefined);
+    setTimeout(checkForUpdates, 2500);
+    updateCheckTimer = setInterval(checkForUpdates, updateCheckIntervalMs);
   }
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -104,4 +117,8 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("before-quit", () => {
+  if (updateCheckTimer) clearInterval(updateCheckTimer);
 });

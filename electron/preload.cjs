@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("blAwards", {
   version: process.env.npm_package_version || "0.1.0",
   updater: {
     check: () => ipcRenderer.invoke("updater-check"),
+    getStatus: () => ipcRenderer.invoke("updater-status"),
     download: () => ipcRenderer.invoke("updater-download"),
     install: () => ipcRenderer.invoke("updater-install"),
     onStatus: (listener) => {
