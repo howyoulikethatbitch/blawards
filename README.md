@@ -51,11 +51,15 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The workflow in `.github/workflows/release.yml` runs on `windows-latest`, installs pnpm 10.26.1 with `pnpm install --frozen-lockfile`, builds the renderer, packages the NSIS installer with `--publish onTag`, validates the expected files, and lets Electron Builder create the GitHub Release using the standard `github.token`. This is what produces the updater metadata required by installed apps.
+The workflow in `.github/workflows/release.yml` supports manually tagged releases. The main-branch workflow in `.github/workflows/build-windows.yml` is the normal path for this app: it automatically creates a patch version from the workflow run number, packages the NSIS installer, and publishes the GitHub Release using the standard `github.token`.
+
+Both workflows apply their release version before packaging, so the installer version and `latest.yml` stay aligned. No manual version tag is required for normal pushes to `main`.
 
 ## Updates
 
 `electron-updater` is configured with the GitHub provider for `howyoulikethatbitch/blawards`. Packaged Windows builds check for releases after launch, show an in-app update prompt, support download progress, allow the user to defer, and offer restart-and-install when ready.
+
+An installed app checks for an update after the main-branch workflow has finished publishing its automatically versioned GitHub Release. It checks shortly after launch and periodically while open, so syncing source files alone does not make an update available; the workflow must complete successfully first.
 
 Updates do not recreate or clear `bl_awards_db`. User titles, images, evaluations, awards, and Hall of Fame data remain in the local IndexedDB profile. Future schema changes should use Dexie migrations.
 
