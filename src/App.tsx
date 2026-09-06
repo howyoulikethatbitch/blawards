@@ -124,14 +124,12 @@ function App() {
   const [titleEditor, setTitleEditor] = useState<{ open: boolean; title?: TitleRecord }>({ open: false });
 
   const refresh = useCallback(async () => {
-    const [titleRows, evaluationRows, welcomeSetting] = await Promise.all([
+    const [titleRows, evaluationRows] = await Promise.all([
       db.titles.orderBy("year").reverse().toArray(),
       db.evaluations.toArray(),
-      db.settings.get("welcomeSeen"),
     ]);
     setTitles(titleRows);
     setEvaluations(evaluationRows);
-    setWelcome(welcomeSetting?.value !== true);
   }, []);
 
   useEffect(() => {
@@ -152,7 +150,6 @@ function App() {
   const meta = pageMeta[currentKey] ?? pageMeta.overview;
 
   const dismissWelcome = async () => {
-    await db.settings.put({ key: "welcomeSeen", value: true });
     setWelcome(false);
   };
   const handleSaved = async () => {
@@ -248,6 +245,10 @@ function UpdateCenter() {
       setStatus(nextStatus);
       if (nextStatus.state === "available" || nextStatus.state === "downloaded") setDismissed(false);
     });
+    void updater.getStatus().then((nextStatus) => {
+      setStatus(nextStatus);
+      if (nextStatus.state === "available" || nextStatus.state === "downloaded") setDismissed(false);
+    }).catch(() => undefined);
     return unsubscribe;
   }, []);
 
@@ -363,16 +364,22 @@ function TitleCard({ title, evaluation, onEdit, onDelete }: { title: TitleRecord
 
 function ActorsPage({ titles }: { titles: TitleRecord[] }) {
   const actors = useMemo(() => {
-    const map = new Map<string, { name: string; titles: TitleRecord[] }>();
-    titles.forEach((title) => [title.actorOne, title.actorTwo].forEach((name) => { if (!name) return; const row = map.get(name) ?? { name, titles: [] }; row.titles.push(title); map.set(name, row); }));
+    const map = new Map<string, { name: string; image?: string; titles: TitleRecord[] }>();
+    titles.forEach((title) => [[title.actorOne, title.actorOneImage], [title.actorTwo, title.actorTwoImage]].forEach(([name, image]) => {
+      if (!name) return;
+      const row = map.get(name) ?? { name, titles: [] };
+      if (!row.image && image) row.image = image;
+      row.titles.push(title);
+      map.set(name, row);
+    }));
     return [...map.values()];
   }, [titles]);
-  return <div className="page"><PageHeading eyebrow="Database / Actors" title="Cast archive" description="A derived view of every performer in your collection." /><div className="view-note"><Archive size={16} /><span>Actors are derived from your title entries. Edit their relationship from the source title.</span></div><div className="actor-grid">{actors.map((actor, index) => <div className="actor-card" key={actor.name}><div className={`actor-avatar actor-tone-${index % 5}`}>{actor.name[0]}</div><div className="actor-info"><h3>{actor.name}</h3><p>{actor.titles.length} linked {actor.titles.length === 1 ? "title" : "titles"}</p><div className="linked-titles">{actor.titles.slice(0, 3).map((title) => <span key={title.id}>{title.title}</span>)}</div></div><ArrowRight size={16} /></div>)}</div></div>;
+  return <div className="page"><PageHeading eyebrow="Database / Actors" title="Cast archive" description="A derived view of every performer in your collection." /><div className="view-note"><Archive size={16} /><span>Actors are derived from your title entries. Edit their relationship from the source title.</span></div><div className="actor-grid">{actors.map((actor, index) => <div className="actor-card" key={actor.name}><div className={`actor-avatar actor-tone-${index % 5} ${actor.image ? "has-image" : ""}`} style={actor.image ? { backgroundImage: `url(${actor.image})` } : undefined}>{!actor.image && actor.name[0]}</div><div className="actor-info"><h3>{actor.name}</h3><p>{actor.titles.length} linked {actor.titles.length === 1 ? "title" : "titles"}</p><div className="linked-titles">{actor.titles.slice(0, 3).map((title) => <span key={title.id}>{title.title}</span>)}</div></div><ArrowRight size={16} /></div>)}</div></div>;
 }
 
 function CharactersPage({ titles }: { titles: TitleRecord[] }) {
-  const chars = titles.flatMap((title) => [{ name: title.characterOne, actor: title.actorOne, title }, { name: title.characterTwo, actor: title.actorTwo, title }]).filter((char) => char.name);
-  return <div className="page"><PageHeading eyebrow="Database / Characters" title="Characters" description="The people who stayed with you after the credits." /><div className="view-note"><Archive size={16} /><span>Character records are synchronized automatically from your titles.</span></div><div className="character-list">{chars.map((char, index) => <div className="character-row" key={`${char.title.id}-${char.name}`}><div className={`character-avatar actor-tone-${index % 5}`}>{char.actor[0]}</div><div className="character-main"><strong>{char.name}</strong><span>{char.actor} · {char.title.title}</span></div><span className="character-kind">{index % 2 ? "Lead" : "Main character"}</span><ArrowRight size={15} /></div>)}</div></div>;
+  const chars = titles.flatMap((title) => [{ name: title.characterOne, actor: title.actorOne, image: title.actorOneImage, title }, { name: title.characterTwo, actor: title.actorTwo, image: title.actorTwoImage, title }]).filter((char) => char.name);
+  return <div className="page"><PageHeading eyebrow="Database / Characters" title="Characters" description="The people who stayed with you after the credits." /><div className="view-note"><Archive size={16} /><span>Character records are synchronized automatically from your titles.</span></div><div className="character-list">{chars.map((char, index) => <div className="character-row" key={`${char.title.id}-${char.name}`}><div className={`character-avatar actor-tone-${index % 5} ${char.image ? "has-image" : ""}`} style={char.image ? { backgroundImage: `url(${char.image})` } : undefined}>{!char.image && char.actor[0]}</div><div className="character-main"><strong>{char.name}</strong><span>{char.actor} · {char.title.title}</span></div><span className="character-kind">{index % 2 ? "Lead" : "Main character"}</span><ArrowRight size={15} /></div>)}</div></div>;
 }
 
 function CouplesPage({ titles }: { titles: TitleRecord[] }) {
@@ -446,6 +453,8 @@ function TitleModal({ title, onClose, onSaved }: { title?: TitleRecord; onClose:
     sceneTitle: title?.sceneTitle ?? "",
     poster: title?.poster ?? "",
     sceneImage: title?.sceneImage ?? "",
+    actorOneImage: title?.actorOneImage ?? "",
+    actorTwoImage: title?.actorTwoImage ?? "",
   });
   const update = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
   const save = async () => {
@@ -458,6 +467,8 @@ function TitleModal({ title, onClose, onSaved }: { title?: TitleRecord; onClose:
       genres: form.genres.split(",").map((genre) => genre.trim()).filter(Boolean),
       poster: form.poster || undefined,
       sceneImage: form.sceneImage || undefined,
+      actorOneImage: form.actorOneImage || undefined,
+      actorTwoImage: form.actorTwoImage || undefined,
     }, title?.id);
     await onSaved();
   };
@@ -479,6 +490,8 @@ function TitleModal({ title, onClose, onSaved }: { title?: TitleRecord; onClose:
       <div className="form-divider full-field"><span>Visual archive</span></div>
       <ImageDropzone label="Poster artwork" hint="Shown across your title archive" value={form.poster} onChange={(value) => update("poster", value)} />
       <ImageDropzone label="Signature scene photo" hint="Shown in your Scenes gallery" value={form.sceneImage} onChange={(value) => update("sceneImage", value)} />
+      <ImageDropzone label="Actor 1 photo" hint="Shown in the cast archive" value={form.actorOneImage} onChange={(value) => update("actorOneImage", value)} />
+      <ImageDropzone label="Actor 2 photo" hint="Shown in the cast archive" value={form.actorTwoImage} onChange={(value) => update("actorTwoImage", value)} />
     </div>
     <div className="modal-actions"><button className="subtle-button" onClick={onClose}>Cancel</button><button className="primary-button" onClick={save}><Check size={16} /> Save title</button></div>
   </motion.div></div>;

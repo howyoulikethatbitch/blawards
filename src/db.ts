@@ -17,6 +17,8 @@ export interface TitleRecord {
   sceneTitle: string;
   poster?: string;
   sceneImage?: string;
+  actorOneImage?: string;
+  actorTwoImage?: string;
   createdAt: string;
   updatedAt: string;
 }

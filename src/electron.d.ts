@@ -7,6 +7,7 @@ declare global {
       version: string;
       updater?: {
         check: () => Promise<{ ok: boolean }>;
+        getStatus: () => Promise<UpdateStatus>;
         download: () => Promise<{ ok: boolean }>;
         install: () => Promise<{ ok: boolean }>;
         onStatus: (listener: (status: UpdateStatus) => void) => () => void;
